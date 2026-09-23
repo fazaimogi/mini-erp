@@ -1,0 +1,1361 @@
+# ERP Mini System — Product Requirements Document
+
+**Version:** 1.0
+**Status:** MVP
+**Target Development:** 7 Days
+**Platform:** Web
+**Architecture:** Fullstack
+**Frontend:** Next.js + TypeScript
+**Backend:** Go + Gin
+**Database:** PostgreSQL
+
+---
+
+## 1. Product Overview
+
+### 1.1 Product Name
+
+**ERP Mini System**
+
+### 1.2 Description
+
+ERP Mini System adalah aplikasi web untuk membantu perusahaan mengelola aktivitas operasional dasar dalam satu sistem terintegrasi.
+
+Sistem berfokus pada:
+
+* Product Management
+* Inventory Management
+* Customer Management
+* Sales Management
+* User Management
+* Dashboard & Reporting
+
+Aplikasi menggunakan arsitektur **separated frontend dan backend**, dengan Next.js sebagai frontend dan Go sebagai REST API backend.
+
+### 1.3 Problem Statement
+
+Perusahaan kecil dan menengah sering menggunakan spreadsheet atau sistem terpisah untuk mengelola:
+
+* Data produk
+* Data stok
+* Data pelanggan
+* Transaksi penjualan
+
+Pendekatan tersebut dapat menyebabkan:
+
+* Data sulit dipantau secara real-time
+* Ketidaksesuaian data stok
+* Pencatatan transaksi manual
+* Kesulitan melihat performa penjualan
+* Tidak adanya kontrol akses pengguna
+
+ERP Mini System dibuat untuk menyediakan sistem terintegrasi yang menangani proses tersebut.
+
+---
+
+# 2. Product Goals
+
+## 2.1 Business Goals
+
+1. Menyediakan sistem sederhana untuk mengelola operasional penjualan.
+2. Mengintegrasikan product, inventory, customer, dan sales.
+3. Mengurangi ketergantungan pada pencatatan manual.
+4. Menyediakan dashboard untuk melihat kondisi operasional.
+
+## 2.2 Technical Goals
+
+Project harus menunjukkan kemampuan dalam:
+
+* REST API development
+* Backend development menggunakan Go
+* Relational database design
+* Authentication
+* Authorization
+* Business logic
+* Database transaction
+* API validation
+* Error handling
+* Automated testing
+* Docker
+* Deployment
+
+---
+
+# 3. Target Users
+
+## 3.1 Admin
+
+Admin memiliki akses penuh terhadap sistem.
+
+Akses:
+
+* Dashboard
+* Products
+* Categories
+* Inventory
+* Customers
+* Sales
+* Users
+* Reports
+
+## 3.2 Staff
+
+Staff digunakan untuk menjalankan aktivitas operasional.
+
+Akses:
+
+* Dashboard
+* Products
+* Inventory
+* Customers
+* Sales
+* Reports
+
+Staff tidak dapat:
+
+* Mengelola user
+* Mengubah role user
+
+---
+
+# 4. User Roles
+
+| Feature    | Admin |  Staff |
+| ---------- | ----: | -----: |
+| Dashboard  |   Yes |    Yes |
+| Products   |  CRUD |   Read |
+| Categories |  CRUD |   Read |
+| Inventory  |  CRUD | Update |
+| Customers  |  CRUD |   CRUD |
+| Sales      |  CRUD |   CRUD |
+| Users      |  CRUD |     No |
+| Reports    |   Yes |    Yes |
+
+> **Note:** MVP menggunakan role sederhana. Advanced RBAC menjadi future feature.
+
+---
+
+# 5. Core Features
+
+## 5.1 Authentication
+
+User dapat:
+
+* Register
+* Login
+* Logout
+* Melihat profile
+
+### Authentication Flow
+
+```text
+User
+  |
+  v
+Login
+  |
+  v
+Validate Credentials
+  |
+  v
+Generate JWT
+  |
+  v
+Return Token
+  |
+  v
+Protected API
+```
+
+### API
+
+```http
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+```
+
+### Security Requirements
+
+* Password tidak boleh disimpan sebagai plaintext.
+* Password harus menggunakan hashing.
+* Protected endpoint harus membutuhkan authentication.
+* JWT secret disimpan menggunakan environment variable.
+
+---
+
+# 6. Dashboard
+
+Dashboard memberikan ringkasan kondisi operasional perusahaan.
+
+## 6.1 Metrics
+
+Dashboard minimal menampilkan:
+
+* Total Products
+* Total Customers
+* Total Sales
+* Total Revenue
+* Low Stock Products
+
+## 6.2 Sales Overview
+
+Dashboard menampilkan ringkasan penjualan berdasarkan periode.
+
+Filter:
+
+* Today
+* This Week
+* This Month
+* Custom Range
+
+## 6.3 Low Stock
+
+Menampilkan produk yang memiliki:
+
+```text
+stock <= minimum_stock
+```
+
+---
+
+# 7. Product Management
+
+Admin dapat mengelola data produk.
+
+## 7.1 Product Data
+
+```text
+id
+name
+sku
+category_id
+description
+price
+stock
+minimum_stock
+created_at
+updated_at
+```
+
+## 7.2 Operations
+
+* Create Product
+* Read Products
+* Read Product Detail
+* Update Product
+* Delete Product
+* Search Product
+* Filter Product
+
+## 7.3 API
+
+```http
+GET    /api/products
+GET    /api/products/:id
+POST   /api/products
+PUT    /api/products/:id
+DELETE /api/products/:id
+```
+
+## 7.4 Validation
+
+Product wajib memiliki:
+
+* Name
+* SKU
+* Category
+* Price
+* Minimum Stock
+
+SKU harus unique.
+
+Price tidak boleh bernilai negatif.
+
+---
+
+# 8. Category Management
+
+Category digunakan untuk mengelompokkan product.
+
+Contoh:
+
+```text
+Electronics
+Accessories
+Office Equipment
+Furniture
+```
+
+## 8.1 API
+
+```http
+GET    /api/categories
+GET    /api/categories/:id
+POST   /api/categories
+PUT    /api/categories/:id
+DELETE /api/categories/:id
+```
+
+---
+
+# 9. Inventory Management
+
+Inventory digunakan untuk mengelola stok produk.
+
+Sistem mendukung:
+
+* Stock In
+* Stock Out
+* Stock Adjustment
+* Inventory History
+
+## 9.1 Stock In
+
+Contoh:
+
+```text
+Current Stock: 10
+Stock In: +5
+
+New Stock: 15
+```
+
+## 9.2 Stock Out
+
+Contoh:
+
+```text
+Current Stock: 15
+Stock Out: -3
+
+New Stock: 12
+```
+
+## 9.3 Stock Validation
+
+Stock tidak boleh menjadi negatif.
+
+Jika:
+
+```text
+Current Stock = 5
+Requested Stock Out = 8
+```
+
+maka sistem harus menolak transaksi.
+
+---
+
+# 10. Inventory Transaction
+
+Setiap perubahan stock harus memiliki history.
+
+## 10.1 Data
+
+```text
+id
+product_id
+type
+quantity
+previous_stock
+current_stock
+reference
+created_by
+created_at
+```
+
+## 10.2 Transaction Types
+
+```text
+IN
+OUT
+ADJUSTMENT
+```
+
+## 10.3 Example
+
+```text
+Product: Laptop
+
+10 → 15
+Type: IN
+Quantity: 5
+
+15 → 12
+Type: OUT
+Quantity: 3
+```
+
+---
+
+# 11. Customer Management
+
+Customer digunakan untuk menyimpan informasi pelanggan.
+
+## 11.1 Customer Data
+
+```text
+id
+name
+email
+phone
+address
+created_at
+updated_at
+```
+
+## 11.2 API
+
+```http
+GET    /api/customers
+GET    /api/customers/:id
+POST   /api/customers
+PUT    /api/customers/:id
+DELETE /api/customers/:id
+```
+
+## 11.3 Search
+
+Customer dapat dicari berdasarkan:
+
+* Name
+* Email
+* Phone
+
+---
+
+# 12. Sales Management
+
+Sales merupakan salah satu core business process.
+
+## 12.1 Sales Flow
+
+```text
+Create Sale
+    |
+    v
+Select Customer
+    |
+    v
+Select Product
+    |
+    v
+Input Quantity
+    |
+    v
+Check Stock
+    |
+    v
+Calculate Total
+    |
+    v
+Create Sale
+    |
+    v
+Create Sale Items
+    |
+    v
+Decrease Stock
+    |
+    v
+Create Inventory Transaction
+```
+
+---
+
+# 13. Sales Data Model
+
+## 13.1 Sale
+
+```text
+id
+invoice_number
+customer_id
+user_id
+total_amount
+status
+created_at
+updated_at
+```
+
+## 13.2 Sale Item
+
+```text
+id
+sale_id
+product_id
+quantity
+price
+subtotal
+```
+
+## 13.3 Relationship
+
+```text
+Sale
+ |
+ +-- Customer
+ |
+ +-- User
+ |
+ +-- Sale Items
+       |
+       +-- Product
+       +-- Quantity
+       +-- Price
+       +-- Subtotal
+```
+
+---
+
+# 14. Sales Business Rules
+
+## 14.1 Stock Validation
+
+Sistem harus memastikan stock mencukupi sebelum transaksi dibuat.
+
+```text
+IF requested_quantity > current_stock
+THEN reject transaction
+```
+
+Error:
+
+```text
+INSUFFICIENT_STOCK
+```
+
+## 14.2 Automatic Stock Deduction
+
+Jika transaksi berhasil:
+
+```text
+new_stock = current_stock - quantity
+```
+
+## 14.3 Database Transaction
+
+Sales harus menggunakan database transaction.
+
+```sql
+BEGIN;
+
+CREATE SALE;
+
+CREATE SALE ITEMS;
+
+UPDATE INVENTORY;
+
+CREATE INVENTORY TRANSACTION;
+
+COMMIT;
+```
+
+Jika salah satu proses gagal:
+
+```sql
+ROLLBACK;
+```
+
+Tujuannya menjaga konsistensi data.
+
+---
+
+# 15. User Management
+
+Admin dapat mengelola user.
+
+## 15.1 Operations
+
+* View Users
+* Create User
+* Update User
+* Delete User
+* Change Role
+* Activate User
+* Deactivate User
+
+## 15.2 User Data
+
+```text
+id
+name
+email
+password_hash
+role_id
+status
+created_at
+updated_at
+```
+
+Password wajib menggunakan secure password hashing.
+
+---
+
+# 16. Reports
+
+MVP menyediakan basic reports.
+
+## 16.1 Sales Report
+
+Menampilkan:
+
+* Total Orders
+* Total Revenue
+* Total Items Sold
+
+Filter:
+
+* Today
+* This Week
+* This Month
+* Custom Range
+
+## 16.2 Product Report
+
+Menampilkan:
+
+* Top Selling Products
+* Low Stock Products
+
+---
+
+# 17. Search & Filtering
+
+## 17.1 Products
+
+Search:
+
+* Name
+* SKU
+
+Filter:
+
+* Category
+* Stock Status
+
+## 17.2 Sales
+
+Search:
+
+* Invoice Number
+
+Filter:
+
+* Customer
+* Date Range
+* Status
+
+## 17.3 Customers
+
+Search:
+
+* Name
+* Email
+* Phone
+
+---
+
+# 18. Database Design
+
+## 18.1 Main Entities
+
+```text
+users
+roles
+categories
+products
+customers
+sales
+sale_items
+inventory
+inventory_transactions
+```
+
+## 18.2 Relationships
+
+```text
+roles
+  |
+  +---- users
+
+
+categories
+  |
+  +---- products
+          |
+          +---- inventory
+
+
+customers
+  |
+  +---- sales
+          |
+          +---- sale_items
+                  |
+                  +---- products
+
+
+products
+  |
+  +---- inventory_transactions
+```
+
+---
+
+# 19. Backend Architecture
+
+Backend menggunakan layered architecture.
+
+```text
+HTTP Request
+     |
+     v
+   Router
+     |
+     v
+  Handler
+     |
+     v
+  Service
+     |
+     v
+ Repository
+     |
+     v
+ PostgreSQL
+```
+
+## 19.1 Handler
+
+Responsibilities:
+
+* Parse HTTP request
+* Validate request
+* Call service
+* Return HTTP response
+
+## 19.2 Service
+
+Responsibilities:
+
+* Business logic
+* Business validation
+* Transaction orchestration
+
+## 19.3 Repository
+
+Responsibilities:
+
+* Database query
+* Create
+* Read
+* Update
+* Delete
+
+---
+
+# 20. Backend Project Structure
+
+```text
+backend/
+|
++-- cmd/
+|   +-- server/
+|       +-- main.go
+|
++-- internal/
+|   |
+|   +-- config/
+|   |
+|   +-- database/
+|   |
+|   +-- middleware/
+|   |
+|   +-- models/
+|   |
+|   +-- handlers/
+|   |
+|   +-- services/
+|   |
+|   +-- repositories/
+|   |
+|   +-- routes/
+|
++-- migrations/
+|
++-- .env
++-- .env.example
++-- go.mod
++-- go.sum
+```
+
+---
+
+# 21. Frontend Architecture
+
+Frontend menggunakan:
+
+* Next.js
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* App Router
+
+## 21.1 Frontend Structure
+
+```text
+frontend/
+|
++-- app/
+|   +-- login/
+|   +-- dashboard/
+|   +-- products/
+|   +-- inventory/
+|   +-- customers/
+|   +-- sales/
+|   +-- users/
+|
++-- components/
+|
++-- hooks/
+|
++-- lib/
+|
++-- services/
+|
++-- types/
+|
++-- middleware.ts
+```
+
+---
+
+# 22. Frontend Pages
+
+## Authentication
+
+```text
+/login
+```
+
+## Dashboard
+
+```text
+/dashboard
+```
+
+## Products
+
+```text
+/products
+/products/new
+/products/[id]
+```
+
+## Inventory
+
+```text
+/inventory
+/inventory/history
+```
+
+## Customers
+
+```text
+/customers
+/customers/new
+/customers/[id]
+```
+
+## Sales
+
+```text
+/sales
+/sales/new
+/sales/[id]
+```
+
+## Users
+
+```text
+/users
+/users/new
+/users/[id]
+```
+
+---
+
+# 23. API Design
+
+Base path:
+
+```text
+/api
+```
+
+## Authentication
+
+```http
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+```
+
+## Products
+
+```http
+GET    /api/products
+GET    /api/products/:id
+POST   /api/products
+PUT    /api/products/:id
+DELETE /api/products/:id
+```
+
+## Categories
+
+```http
+GET    /api/categories
+GET    /api/categories/:id
+POST   /api/categories
+PUT    /api/categories/:id
+DELETE /api/categories/:id
+```
+
+## Inventory
+
+```http
+GET  /api/inventory
+GET  /api/inventory/:id
+POST /api/inventory/stock-in
+POST /api/inventory/stock-out
+GET  /api/inventory/history
+```
+
+## Customers
+
+```http
+GET    /api/customers
+GET    /api/customers/:id
+POST   /api/customers
+PUT    /api/customers/:id
+DELETE /api/customers/:id
+```
+
+## Sales
+
+```http
+GET  /api/sales
+GET  /api/sales/:id
+POST /api/sales
+```
+
+## Users
+
+```http
+GET    /api/users
+GET    /api/users/:id
+POST   /api/users
+PUT    /api/users/:id
+DELETE /api/users/:id
+```
+
+## Reports
+
+```http
+GET /api/reports/dashboard
+GET /api/reports/sales
+GET /api/reports/products
+```
+
+---
+
+# 24. API Response Standard
+
+## Success
+
+```json
+{
+  "data": {},
+  "message": "success"
+}
+```
+
+## Collection
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 100
+  }
+}
+```
+
+## Error
+
+```json
+{
+  "error": {
+    "code": "PRODUCT_NOT_FOUND",
+    "message": "product not found"
+  }
+}
+```
+
+---
+
+# 25. HTTP Status Codes
+
+| Status | Usage                                    |
+| ------ | ---------------------------------------- |
+| `200`  | Successful request                       |
+| `201`  | Resource created                         |
+| `204`  | Successful request without response body |
+| `400`  | Invalid request                          |
+| `401`  | Unauthenticated                          |
+| `403`  | Unauthorized                             |
+| `404`  | Resource not found                       |
+| `409`  | Conflict                                 |
+| `422`  | Validation error                         |
+| `500`  | Internal server error                    |
+
+---
+
+# 26. Non-Functional Requirements
+
+## 26.1 Security
+
+System harus menerapkan:
+
+* Password hashing
+* JWT authentication
+* Role-based authorization
+* Input validation
+* CORS
+* Protected routes
+* Environment variables
+* SQL injection prevention
+
+## 26.2 Reliability
+
+Operasi yang memengaruhi beberapa tabel harus menggunakan database transaction.
+
+Contoh:
+
+```text
+Create Sale
+    +
+Create Sale Items
+    +
+Update Inventory
+    +
+Create Inventory History
+```
+
+Semua harus berhasil atau semuanya di-rollback.
+
+## 26.3 Maintainability
+
+Code harus:
+
+* Modular
+* Consistent
+* Easy to test
+* Easy to extend
+* Menggunakan separation of concerns
+
+---
+
+# 27. Technology Stack
+
+## Frontend
+
+| Technology   | Purpose            |
+| ------------ | ------------------ |
+| Next.js      | Frontend framework |
+| TypeScript   | Type safety        |
+| Tailwind CSS | Styling            |
+| shadcn/ui    | UI components      |
+
+## Backend
+
+| Technology | Purpose          |
+| ---------- | ---------------- |
+| Go         | Backend language |
+| Gin        | HTTP framework   |
+| GORM       | ORM              |
+| JWT        | Authentication   |
+
+## Database
+
+| Technology | Purpose             |
+| ---------- | ------------------- |
+| PostgreSQL | Relational database |
+
+## Development
+
+| Technology | Purpose          |
+| ---------- | ---------------- |
+| Git        | Version control  |
+| GitHub     | Repository       |
+| Docker     | Containerization |
+| Postman    | API testing      |
+
+---
+
+# 28. Development Roadmap
+
+## Day 1 — Backend Foundation
+
+* Setup Go
+* Setup Gin
+* Setup project structure
+* Create REST API
+* Create Product API
+* Create layered architecture
+
+## Day 2 — Database
+
+* Setup PostgreSQL
+* Design database
+* Create migrations
+* Setup GORM
+* Create repository
+* Implement Product CRUD
+
+## Day 3 — Authentication
+
+* Register
+* Login
+* Password hashing
+* JWT
+* Authentication middleware
+* Role authorization
+
+## Day 4 — Inventory
+
+* Inventory model
+* Stock In
+* Stock Out
+* Stock validation
+* Inventory history
+
+## Day 5 — Sales
+
+* Sales model
+* Sale items
+* Customer integration
+* Stock validation
+* Database transaction
+* Dashboard API
+
+## Day 6 — Frontend
+
+* Next.js setup
+* Authentication page
+* Dashboard
+* Product page
+* Inventory page
+* Customer page
+* Sales page
+
+## Day 7 — Integration & Deployment
+
+* Frontend/backend integration
+* API testing
+* Error handling
+* Loading states
+* Docker
+* Deployment
+* README
+* Final testing
+
+---
+
+# 29. MVP Scope
+
+## Must Have
+
+* [ ] Authentication
+* [ ] JWT
+* [ ] Role
+* [ ] Dashboard
+* [ ] Product CRUD
+* [ ] Category CRUD
+* [ ] Customer CRUD
+* [ ] Inventory
+* [ ] Stock In
+* [ ] Stock Out
+* [ ] Inventory History
+* [ ] Sales
+* [ ] Automatic Stock Deduction
+* [ ] Basic Reports
+* [ ] Search & Filter
+* [ ] REST API
+* [ ] PostgreSQL
+* [ ] Docker
+* [ ] Deployment
+
+## Nice to Have
+
+* [ ] PDF Invoice
+* [ ] Excel Export
+* [ ] Advanced RBAC
+* [ ] Audit Log
+* [ ] Notifications
+* [ ] Advanced Charts
+* [ ] Dark Mode
+
+## Future
+
+* [ ] Supplier Management
+* [ ] Procurement
+* [ ] Accounting
+* [ ] HR Management
+* [ ] Payroll
+* [ ] Multi Warehouse
+* [ ] Multi Company
+* [ ] Approval Workflow
+
+---
+
+# 30. Definition of Done
+
+MVP dianggap selesai apabila:
+
+* [ ] User dapat register
+* [ ] User dapat login
+* [ ] JWT authentication bekerja
+* [ ] Role authorization bekerja
+* [ ] Admin dapat mengelola products
+* [ ] Customer dapat dikelola
+* [ ] Stock dapat ditambah
+* [ ] Stock dapat dikurangi
+* [ ] Inventory history tersimpan
+* [ ] User dapat membuat sales
+* [ ] Stock otomatis berkurang setelah sales
+* [ ] Sistem menolak sales jika stock tidak mencukupi
+* [ ] Dashboard menampilkan statistik
+* [ ] Frontend terhubung dengan Go API
+* [ ] PostgreSQL digunakan sebagai database
+* [ ] API memiliki validation
+* [ ] API memiliki error handling
+* [ ] Database transaction digunakan pada sales
+* [ ] Docker berhasil menjalankan aplikasi
+* [ ] Aplikasi berhasil di-deploy
+* [ ] README tersedia
+* [ ] Repository GitHub tersedia
+
+---
+
+# 31. Success Criteria
+
+Project dianggap berhasil jika:
+
+1. User dapat melakukan login dan mengakses dashboard.
+2. Admin dapat mengelola data product.
+3. Staff dapat menjalankan aktivitas operasional.
+4. Sistem dapat mencatat perubahan inventory.
+5. Sistem dapat membuat transaksi penjualan.
+6. Sistem otomatis memperbarui stock setelah transaksi.
+7. Sistem menjaga konsistensi data menggunakan database transaction.
+8. Frontend dan backend berkomunikasi melalui REST API.
+9. Aplikasi dapat dijalankan menggunakan Docker.
+10. Aplikasi dapat diakses melalui deployment environment.
+
+---
+
+# 32. Project Architecture
+
+```text
+                         CLIENT
+                           |
+                           v
+                  +----------------+
+                  |    Next.js     |
+                  |   Frontend     |
+                  +-------+--------+
+                          |
+                       REST API
+                          |
+                          v
+                  +---------------+
+                  |      Go       |
+                  |     Gin       |
+                  +-------+-------+
+                          |
+              +-----------+-----------+
+              |                       |
+              v                       v
+        +-----------+          +-------------+
+        |  Service  |          | Middleware  |
+        +-----+-----+          +-------------+
+              |
+              v
+        +-----------+
+        | Repository|
+        +-----+-----+
+              |
+              v
+        +-----------+
+        | PostgreSQL|
+        +-----------+
+```
+
+---
+
+# 33. Final MVP Architecture
+
+```text
+ERP MINI SYSTEM
+│
+├── Authentication
+│   ├── Register
+│   ├── Login
+│   ├── JWT
+│   └── RBAC
+│
+├── Dashboard
+│   ├── Revenue
+│   ├── Orders
+│   ├── Products
+│   └── Low Stock
+│
+├── Products
+│   ├── Categories
+│   ├── CRUD
+│   └── Search
+│
+├── Inventory
+│   ├── Stock In
+│   ├── Stock Out
+│   ├── Adjustment
+│   └── History
+│
+├── Customers
+│   └── CRUD
+│
+├── Sales
+│   ├── Create Sale
+│   ├── Sale Items
+│   ├── Stock Validation
+│   └── Automatic Stock Deduction
+│
+├── Users
+│   ├── User Management
+│   └── Role Management
+│
+└── Reports
+    ├── Sales
+    └── Products
+```
+
+---
+
+**End of PRD — Version 1.0**
