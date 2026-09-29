@@ -17,19 +17,56 @@ func NewGormProductRepository(db *gorm.DB) *GormProductRepository {
 	}
 }
 
-func (r *GormProductRepository) List() ([]models.Product, error) {
-	var products []models.Product
-
-	err := r.db.
-		Order("id ASC").
-		Find(&products).
-		Error
-
-	if err != nil {
-		return nil, err
+func (r *GormProductRepository) ListPaged(limit, offset int) ([]models.Product, int64, error) {
+	// Rebuilt per call: reusing one *gorm.DB for Count and Find leaks the
+	// count's conditions into the select.
+	query := func() *gorm.DB {
+		return r.db.Model(&models.Product{})
 	}
 
-	return products, nil
+	var total int64
+	if err := query().Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var products []models.Product
+	err := query().
+		Order("id ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&products).
+		Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return products, total, nil
+}
+
+// ListLowStockPaged returns products at or below their minimum stock
+// (PRD section 6.3).
+func (r *GormProductRepository) ListLowStockPaged(limit, offset int) ([]models.Product, int64, error) {
+	query := func() *gorm.DB {
+		return r.db.Model(&models.Product{}).Where("stock <= minimum_stock")
+	}
+
+	var total int64
+	if err := query().Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var products []models.Product
+	err := query().
+		Order("stock ASC, id ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&products).
+		Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return products, total, nil
 }
 
 func (r *GormProductRepository) GetByID(id uint) (*models.Product, error) {

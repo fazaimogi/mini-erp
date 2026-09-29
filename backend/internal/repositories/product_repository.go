@@ -18,7 +18,10 @@ var ErrProductNotFound = errors.New("product not found")
 // The in-memory implementation is temporary; it will be replaced by a
 // GORM/PostgreSQL implementation on Day 2 without touching the service layer.
 type ProductRepository interface {
-	List() ([]models.Product, error)
+	// ListPaged returns one page of products plus the total row count.
+	ListPaged(limit, offset int) ([]models.Product, int64, error)
+	// ListLowStockPaged returns products where stock <= minimum_stock.
+	ListLowStockPaged(limit, offset int) ([]models.Product, int64, error)
 	GetByID(id uint) (*models.Product, error)
 	GetBySKU(sku string) (*models.Product, error)
 	Create(product *models.Product) error
@@ -58,7 +61,10 @@ func (r *InMemoryProductRepository) seed() {
 	}
 }
 
-func (r *InMemoryProductRepository) List() ([]models.Product, error) {
+// ListPaged returns a page of products plus the total count. The SQL
+// implementation pushes LIMIT/OFFSET to the database; this one slices in Go so
+// both satisfy the same contract.
+func (r *InMemoryProductRepository) ListPaged(limit, offset int) ([]models.Product, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -68,11 +74,74 @@ func (r *InMemoryProductRepository) List() ([]models.Product, error) {
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
-	products := make([]models.Product, 0, len(r.products))
-	for _, id := range ids {
+	total := int64(len(ids))
+	if offset >= len(ids) {
+		return []models.Product{}, total, nil
+	}
+
+	end := offset + limit
+	if end > len(ids) {
+		end = len(ids)
+	}
+
+	products := make([]models.Product, 0, end-offset)
+	for _, id := range ids[offset:end] {
 		products = append(products, *r.products[id])
 	}
-	return products, nil
+
+	return products, total, nil
+}
+
+// ListLowStockPaged returns products at or below their minimum stock
+// (PRD section 6.3).
+func (r *InMemoryProductRepository) ListLowStockPaged(limit, offset int) ([]models.Product, int64, error) {
+	all, _, err := r.ListPaged(len(r.products)+offset+1, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	low := make([]models.Product, 0, len(all))
+	for _, product := range all {
+		if product.Stock <= product.MinimumStock {
+			low = append(low, product)
+		}
+	}
+
+	total := int64(len(low))
+	if offset >= len(low) {
+		return []models.Product{}, total, nil
+	}
+
+	end := offset + limit
+	if end > len(low) {
+		end = len(low)
+	}
+
+	return low[offset:end], total, nil
+}
+
+// adjustStock applies a signed delta and reports the stock before and after.
+// It takes the write lock so concurrent movements cannot interleave and both
+// read the same previous stock.
+func (r *InMemoryProductRepository) adjustStock(id uint, delta int) (int, int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	product, ok := r.products[id]
+	if !ok {
+		return 0, 0, ErrProductNotFound
+	}
+
+	previous := product.Stock
+	current := previous + delta
+	if current < 0 {
+		return 0, 0, ErrInsufficientStock
+	}
+
+	product.Stock = current
+	product.UpdatedAt = time.Now()
+
+	return previous, current, nil
 }
 
 func (r *InMemoryProductRepository) GetByID(id uint) (*models.Product, error) {

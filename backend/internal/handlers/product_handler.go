@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -21,13 +19,24 @@ func NewProductHandler(service services.ProductService) *ProductHandler {
 // List godoc
 // GET /api/products?page=1&limit=20
 func (h *ProductHandler) List(c *gin.Context) {
-	page := parsePositiveInt(c.DefaultQuery("page", "1"), 1)
-	limit := parsePositiveInt(c.DefaultQuery("limit", "20"), 20)
-	if limit > 100 {
-		limit = 20
-	}
+	page, limit := pagination(c)
 
 	products, total, err := h.service.List(page, limit)
+	if err != nil {
+		respondInternalError(c, err)
+		return
+	}
+
+	Collection(c, products, page, limit, total)
+}
+
+// LowStock godoc
+// GET /api/products/low-stock?page=1&limit=20
+// Products where stock <= minimum_stock (PRD section 6.3).
+func (h *ProductHandler) LowStock(c *gin.Context) {
+	page, limit := pagination(c)
+
+	products, total, err := h.service.ListLowStock(page, limit)
 	if err != nil {
 		respondInternalError(c, err)
 		return
@@ -111,33 +120,4 @@ func (h *ProductHandler) Delete(c *gin.Context) {
 	}
 
 	Success(c, http.StatusOK, nil, "product deleted")
-}
-
-func parseIDParam(c *gin.Context) (uint, error) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
-		return 0, errors.New("invalid id")
-	}
-	return uint(id), nil
-}
-
-func parsePositiveInt(value string, fallback int) int {
-	number, err := strconv.Atoi(value)
-	if err != nil || number < 1 {
-		return fallback
-	}
-	return number
-}
-
-func respondServiceError(c *gin.Context, err error) {
-	var appErr *services.AppError
-	if errors.As(err, &appErr) {
-		Error(c, appErr.HTTPStatus, appErr.Code, appErr.Message)
-		return
-	}
-	respondInternalError(c, err)
-}
-
-func respondInternalError(c *gin.Context, err error) {
-	Error(c, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "internal server error")
 }

@@ -18,17 +18,18 @@ const (
 // PRD section 7.4: name, sku, category, price and minimum stock are required,
 // sku must be unique and price must not be negative.
 type ProductInput struct {
-	Name         string  `json:"name" binding:"required"`
-	SKU          string  `json:"sku" binding:"required"`
-	CategoryID   uint    `json:"category_id" binding:"required,gt=0"`
-	Description  string  `json:"description"`
+	Name         string          `json:"name" binding:"required"`
+	SKU          string          `json:"sku" binding:"required"`
+	CategoryID   uint            `json:"category_id" binding:"required,gt=0"`
+	Description  string          `json:"description"`
 	Price        decimal.Decimal `json:"price" binding:"required"`
-	Stock        int     `json:"stock" binding:"min=0"`
-	MinimumStock int     `json:"minimum_stock" binding:"min=0"`
+	Stock        int             `json:"stock" binding:"min=0"`
+	MinimumStock int             `json:"minimum_stock" binding:"min=0"`
 }
 
 type ProductService interface {
 	List(page, limit int) ([]models.Product, int64, error)
+	ListLowStock(page, limit int) ([]models.Product, int64, error)
 	GetByID(id uint) (*models.Product, error)
 	Create(input *ProductInput) (*models.Product, error)
 	Update(id uint, input *ProductInput) (*models.Product, error)
@@ -44,23 +45,13 @@ func NewProductService(repo repositories.ProductRepository) ProductService {
 }
 
 func (s *productService) List(page, limit int) ([]models.Product, int64, error) {
-	products, err := s.repo.List()
-	if err != nil {
-		return nil, 0, err
-	}
+	return s.repo.ListPaged(limit, (page-1)*limit)
+}
 
-	total := int64(len(products))
-	start := (page - 1) * limit
-	if start > int(total) {
-		return []models.Product{}, total, nil
-	}
-
-	end := start + limit
-	if end > int(total) {
-		end = int(total)
-	}
-
-	return products[start:end], total, nil
+// ListLowStock backs the dashboard's low stock metric and the product report
+// (PRD section 6.3): stock <= minimum_stock.
+func (s *productService) ListLowStock(page, limit int) ([]models.Product, int64, error) {
+	return s.repo.ListLowStockPaged(limit, (page-1)*limit)
 }
 
 func (s *productService) GetByID(id uint) (*models.Product, error) {
@@ -99,7 +90,8 @@ func (s *productService) Create(input *ProductInput) (*models.Product, error) {
 }
 
 func (s *productService) Update(id uint, input *ProductInput) (*models.Product, error) {
-	if _, err := s.repo.GetByID(id); err != nil {
+	existing, err := s.repo.GetByID(id)
+	if err != nil {
 		if err == repositories.ErrProductNotFound {
 			return nil, ErrProductNotFound
 		}
@@ -122,6 +114,8 @@ func (s *productService) Update(id uint, input *ProductInput) (*models.Product, 
 		Price:        input.Price,
 		Stock:        input.Stock,
 		MinimumStock: input.MinimumStock,
+		// Carried over so the full-column Save keeps the original creation time.
+		CreatedAt: existing.CreatedAt,
 	}
 
 	if err := s.repo.Update(product); err != nil {

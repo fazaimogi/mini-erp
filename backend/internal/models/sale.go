@@ -7,13 +7,13 @@ import (
 )
 
 type Sale struct {
-	ID            uint       `json:"id" gorm:"primaryKey"`
-	InvoiceNumber string     `json:"invoice_number" gorm:"column:invoice_number;unique;not null"`
-	CustomerID    uint       `json:"customer_id" gorm:"column:customer_id;not null"`
-	UserID        uint       `json:"user_id" gorm:"column:user_id;not null"`
+	ID            uint            `json:"id" gorm:"primaryKey"`
+	InvoiceNumber string          `json:"invoice_number" gorm:"column:invoice_number;unique;not null"`
+	CustomerID    uint            `json:"customer_id" gorm:"column:customer_id;not null"`
+	UserID        uint            `json:"user_id" gorm:"column:user_id;not null"`
 	TotalAmount   decimal.Decimal `json:"total_amount" gorm:"column:total_amount;type:numeric(15,2);not null"`
-	Status        string     `json:"status" gorm:"column:status;not null"`
-	Items         []SaleItem `json:"items" gorm:"foreignKey:SaleID"`
-	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt     time.Time  `json:"updated_at" gorm:"column:updated_at"`
+	Status        string          `json:"status" gorm:"column:status;not null"`
+	Items         []SaleItem      `json:"items" gorm:"foreignKey:SaleID"`
+	CreatedAt     time.Time       `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt     time.Time       `json:"updated_at" gorm:"column:updated_at"`
 }

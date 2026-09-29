@@ -19,7 +19,11 @@ func Connect(cfg config.Config) (*gorm.DB, error) {
 		cfg.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		// TranslateError maps unique-constraint violations to gorm.ErrDuplicatedKey
+		// so repositories can report conflicts without parsing driver messages.
+		TranslateError: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
