@@ -4,15 +4,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import DeleteModal from "@/components/DeleteModal";
+import ToastContainer, { useToast } from "@/components/Toast";
 import { apiClient } from "@/lib/api";
 import { Product, ApiResponse, User } from "@/lib/types";
 
 export default function ProductsPage() {
   const router = useRouter();
+  const { success, error } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: number; name: string }>({
+    open: false,
+    id: 0,
+    name: "",
+  });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -29,24 +38,37 @@ export default function ProductsPage() {
           setProducts(res.data);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load products");
+        error(err instanceof Error ? err.message : "Failed to load products");
       } finally {
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [router]);
+  }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete product?")) return;
+  const handleDeleteClick = (id: number, name: string) => {
+    setDeleteModal({ open: true, id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
     try {
-      await apiClient.delete(`/products/${id}`);
-      setProducts(products.filter(p => p.id !== id));
+      await apiClient.delete(`/products/${deleteModal.id}`);
+      setProducts(products.filter(p => p.id !== deleteModal.id));
+      success(`Product "${deleteModal.name}" deleted`);
+      setDeleteModal({ open: false, id: 0, name: "" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.sku.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (!user) return null;
   if (loading) return <div className="p-8">Loading...</div>;
@@ -56,6 +78,7 @@ export default function ProductsPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
+      <ToastContainer />
 
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8 bg-white rounded-lg shadow-sm p-6">
@@ -70,7 +93,15 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {error && <div className="text-red-600 mb-4 bg-red-50 p-4 rounded">{error}</div>}
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <input
+            type="text"
+            placeholder="Search by name or SKU..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <table className="w-full">
@@ -94,7 +125,7 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {products.map((product) => (
+              {filtered.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">{product.name}</td>
                   <td className="px-6 py-4 text-gray-600">{product.sku}</td>
@@ -120,7 +151,7 @@ export default function ProductsPage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(product.id)}
+                          onClick={() => handleDeleteClick(product.id, product.name)}
                           className="text-red-600 hover:underline text-sm"
                         >
                           Delete
@@ -132,11 +163,22 @@ export default function ProductsPage() {
               ))}
             </tbody>
           </table>
-          {products.length === 0 && (
-            <div className="p-8 text-center text-gray-500">No products found</div>
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              {search ? "No products match your search" : "No products found"}
+            </div>
           )}
         </div>
       </main>
+
+      <DeleteModal
+        isOpen={deleteModal.open}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${deleteModal.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ open: false, id: 0, name: "" })}
+        isLoading={deleting}
+      />
     </div>
   );
 }

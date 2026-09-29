@@ -2,17 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
+import DeleteModal from "@/components/DeleteModal";
+import ToastContainer, { useToast } from "@/components/Toast";
 import { apiClient } from "@/lib/api";
 import { Customer, ApiResponse, User } from "@/lib/types";
 
 export default function CustomersPage() {
   const router = useRouter();
+  const { success, error } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: number; name: string }>({
+    open: false,
+    id: 0,
+    name: "",
+  });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -27,23 +35,36 @@ export default function CustomersPage() {
         const res = await apiClient.get<ApiResponse<Customer[]>>("/customers");
         if (Array.isArray(res.data)) setCustomers(res.data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+        error(err instanceof Error ? err.message : "Failed to load");
       } finally {
         setLoading(false);
       }
     };
     fetch();
-  }, [router]);
+  }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete customer?")) return;
+  const handleDeleteClick = (id: number, name: string) => {
+    setDeleteModal({ open: true, id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
     try {
-      await apiClient.delete(`/customers/${id}`);
-      setCustomers(customers.filter(c => c.id !== id));
+      await apiClient.delete(`/customers/${deleteModal.id}`);
+      setCustomers(customers.filter(c => c.id !== deleteModal.id));
+      success(`Customer "${deleteModal.name}" deleted`);
+      setDeleteModal({ open: false, id: 0, name: "" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const filtered = customers.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (!user) return null;
   if (loading) return <div className="p-8">Loading...</div>;
@@ -51,6 +72,7 @@ export default function CustomersPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
+      <ToastContainer />
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8 bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-3xl font-bold">Customers</h1>
@@ -61,7 +83,17 @@ export default function CustomersPage() {
             + New Customer
           </button>
         </div>
-        {error && <div className="text-red-600 mb-4 bg-red-50 p-4 rounded">{error}</div>}
+
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
@@ -73,7 +105,7 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {customers.map((cust) => (
+              {filtered.map((cust) => (
                 <tr key={cust.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">{cust.name}</td>
                   <td className="px-6 py-4">{cust.email}</td>
@@ -86,7 +118,7 @@ export default function CustomersPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(cust.id)}
+                      onClick={() => handleDeleteClick(cust.id, cust.name)}
                       className="text-red-600 hover:underline text-sm"
                     >
                       Delete
@@ -96,9 +128,22 @@ export default function CustomersPage() {
               ))}
             </tbody>
           </table>
-          {customers.length === 0 && <div className="p-8 text-center text-gray-500">No customers</div>}
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              {search ? "No customers match" : "No customers"}
+            </div>
+          )}
         </div>
       </main>
+
+      <DeleteModal
+        isOpen={deleteModal.open}
+        title="Delete Customer"
+        message={`Are you sure you want to delete "${deleteModal.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ open: false, id: 0, name: "" })}
+        isLoading={deleting}
+      />
     </div>
   );
 }

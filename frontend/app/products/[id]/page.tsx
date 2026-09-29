@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import ToastContainer, { useToast } from "@/components/Toast";
 import { apiClient } from "@/lib/api";
 import { Product, ApiResponse, User } from "@/lib/types";
 
 export default function ProductFormPage() {
   const router = useRouter();
   const params = useParams();
+  const { success, error: showError } = useToast();
   const id = params?.id as string;
   const isEdit = !!id && id !== "new";
 
@@ -66,14 +68,14 @@ export default function ProductFormPage() {
             setForm(res.data);
           }
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to load product");
+          showError(err instanceof Error ? err.message : "Failed to load product");
         } finally {
           setLoading(false);
         }
       };
       fetchProduct();
     }
-  }, [router, id, isEdit]);
+  }, [id, isEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -90,6 +92,7 @@ export default function ProductFormPage() {
 
     if (form.category_id === 0) {
       setError("Please select a category");
+      showError("Please select a category");
       return;
     }
 
@@ -99,12 +102,16 @@ export default function ProductFormPage() {
     try {
       if (isEdit) {
         await apiClient.put(`/products/${id}`, form);
+        success("Product updated successfully");
       } else {
         await apiClient.post("/products", form);
+        success("Product created successfully");
       }
       router.push("/products");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Submission failed");
+      const errMsg = err instanceof Error ? err.message : "Submission failed";
+      setError(errMsg);
+      showError(errMsg);
       setSubmitting(false);
     }
   };
@@ -115,6 +122,7 @@ export default function ProductFormPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
+      <ToastContainer />
 
       <main className="flex-1 p-8 max-w-2xl">
         <div className="mb-8">

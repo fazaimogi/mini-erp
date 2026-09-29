@@ -18,7 +18,7 @@ export default function Header({ title, user, action }: HeaderProps) {
           <>
             <p className="text-sm text-gray-600">{user.email}</p>
             <span className="inline-block bg-blue-600 text-white px-3 py-1 rounded text-xs font-semibold mt-2">
-              {user.role.name}
+              {typeof user.role === "string" ? user.role : user.role.name}
             </span>
           </>
         )}

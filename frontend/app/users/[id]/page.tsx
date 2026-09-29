@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import ToastContainer, { useToast } from "@/components/Toast";
 import { apiClient } from "@/lib/api";
 import { User, ApiResponse } from "@/lib/types";
 
@@ -15,6 +16,7 @@ export default function UserFormPage() {
   const params = useParams();
   const id = params?.id as string;
   const isEdit = !!id && id !== "new";
+  const { success, error: showError } = useToast();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(isEdit);
@@ -26,7 +28,7 @@ export default function UserFormPage() {
     name: "",
     email: "",
     password: "",
-    role_id: 2, // default staff
+    role_id: 2,
   });
 
   useEffect(() => {
@@ -38,7 +40,8 @@ export default function UserFormPage() {
     const userData = JSON.parse(stored);
     setUser(userData);
 
-    if (userData.role.name !== "admin") {
+    const roleCheck = typeof userData.role === "string" ? userData.role : userData.role?.name;
+    if (roleCheck !== "admin") {
       router.push("/users");
       return;
     }
@@ -48,10 +51,9 @@ export default function UserFormPage() {
         const res = await apiClient.get<ApiResponse<{ id: number; name: string }[]>>("/roles");
         if (Array.isArray(res.data)) setRoles(res.data);
       } catch (err) {
-        console.error(err);
+        showError(err instanceof Error ? err.message : "Failed to load roles");
       }
     };
-
     fetchRoles();
 
     if (isEdit) {
@@ -63,18 +65,18 @@ export default function UserFormPage() {
               name: res.data.name,
               email: res.data.email,
               password: "",
-              role_id: res.data.role.id,
+              role_id: typeof res.data.role === "string" ? 2 : res.data.role.id,
             });
           }
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to load");
+          showError(err instanceof Error ? err.message : "Failed to load");
         } finally {
           setLoading(false);
         }
       };
       fetchUser();
     }
-  }, [router, id, isEdit]);
+  }, [id, isEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -95,12 +97,16 @@ export default function UserFormPage() {
 
       if (isEdit) {
         await apiClient.put(`/users/${id}`, payload);
+        success("User updated");
       } else {
         await apiClient.post("/users", form);
+        success("User created");
       }
       router.push("/users");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      const errMsg = err instanceof Error ? err.message : "Failed";
+      setError(errMsg);
+      showError(errMsg);
       setSubmitting(false);
     }
   };
@@ -111,15 +117,23 @@ export default function UserFormPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
+      <ToastContainer />
       <main className="flex-1 p-8 max-w-2xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">{isEdit ? "Edit User" : "New User"}</h1>
+          <p className="text-gray-600 mt-2">
+            {isEdit ? "Update user details" : "Create a new user"}
+          </p>
         </div>
+
         {error && <div className="text-red-600 mb-6 bg-red-50 p-4 rounded">{error}</div>}
+
         <div className="bg-white rounded-lg shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Name *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Name *
+              </label>
               <input
                 type="text"
                 name="name"
@@ -127,10 +141,14 @@ export default function UserFormPage() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="John Doe"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Email *
+              </label>
               <input
                 type="email"
                 name="email"
@@ -138,11 +156,13 @@ export default function UserFormPage() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="john@example.com"
               />
             </div>
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {isEdit ? "Password (leave empty to keep)" : "Password"} *
+                Password {!isEdit && "*"}
               </label>
               <input
                 type="password"
@@ -151,29 +171,36 @@ export default function UserFormPage() {
                 onChange={handleChange}
                 required={!isEdit}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={isEdit ? "Leave blank to keep current" : "••••••••"}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Role *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Role *
+              </label>
               <select
                 name="role_id"
                 value={form.role_id}
                 onChange={handleChange}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
+                <option value={0}>Select role</option>
                 {roles.map(role => (
-                  <option key={role.id} value={role.id}>{role.name}</option>
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
                 ))}
               </select>
             </div>
+
             <div className="flex gap-4 pt-6">
               <button
                 type="submit"
                 disabled={submitting}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-lg font-medium transition"
               >
-                {submitting ? "Saving..." : isEdit ? "Update" : "Create"}
+                {submitting ? "Saving..." : isEdit ? "Update User" : "Create User"}
               </button>
               <button
                 type="button"

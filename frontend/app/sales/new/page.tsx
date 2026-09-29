@@ -45,7 +45,7 @@ export default function SalesFormPage() {
       }
     };
     fetch();
-  }, [router]);
+  }, []);
 
   const handleAddItem = () => {
     setForm(prev => ({

@@ -3,19 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import DeleteModal from "@/components/DeleteModal";
+import ToastContainer, { useToast } from "@/components/Toast";
 import { apiClient } from "@/lib/api";
 import { User, ApiResponse } from "@/lib/types";
 
 interface UserData extends User {
-  password?: string;
+  status?: string;
 }
 
 export default function UsersPage() {
   const router = useRouter();
+  const { success, error } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: number; name: string }>({
+    open: false,
+    id: 0,
+    name: "",
+  });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -26,7 +34,8 @@ export default function UsersPage() {
     const userData = JSON.parse(stored);
     setUser(userData);
 
-    if (userData.role.name !== "admin") {
+    const isAdmin = (typeof userData.role === "string" ? userData.role : userData.role?.name) === "admin";
+    if (!isAdmin) {
       router.push("/dashboard");
       return;
     }
@@ -36,21 +45,29 @@ export default function UsersPage() {
         const res = await apiClient.get<ApiResponse<UserData[]>>("/users");
         if (Array.isArray(res.data)) setUsers(res.data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+        error(err instanceof Error ? err.message : "Failed to load");
       } finally {
         setLoading(false);
       }
     };
     fetch();
-  }, [router]);
+  }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete user?")) return;
+  const handleDeleteClick = (id: number, name: string) => {
+    setDeleteModal({ open: true, id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
     try {
-      await apiClient.delete(`/users/${id}`);
-      setUsers(users.filter(u => u.id !== id));
+      await apiClient.delete(`/users/${deleteModal.id}`);
+      setUsers(users.filter(u => u.id !== deleteModal.id));
+      success(`User "${deleteModal.name}" deleted`);
+      setDeleteModal({ open: false, id: 0, name: "" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -60,6 +77,7 @@ export default function UsersPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
+      <ToastContainer />
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8 bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-3xl font-bold">Users</h1>
@@ -70,7 +88,6 @@ export default function UsersPage() {
             + New User
           </button>
         </div>
-        {error && <div className="text-red-600 mb-4 bg-red-50 p-4 rounded">{error}</div>}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
@@ -88,9 +105,11 @@ export default function UsersPage() {
                   <td className="px-6 py-4">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      u.role.name === "admin" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                      (typeof u.role === "string" ? u.role : u.role?.name) === "admin"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-blue-100 text-blue-700"
                     }`}>
-                      {u.role.name}
+                      {typeof u.role === "string" ? u.role : u.role?.name}
                     </span>
                   </td>
                   <td className="px-6 py-4 space-x-2">
@@ -101,7 +120,7 @@ export default function UsersPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(u.id)}
+                      onClick={() => handleDeleteClick(u.id, u.name)}
                       className="text-red-600 hover:underline text-sm"
                     >
                       Delete
@@ -113,6 +132,15 @@ export default function UsersPage() {
           </table>
         </div>
       </main>
+
+      <DeleteModal
+        isOpen={deleteModal.open}
+        title="Delete User"
+        message={`Are you sure you want to delete "${deleteModal.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteModal({ open: false, id: 0, name: "" })}
+        isLoading={deleting}
+      />
     </div>
   );
 }

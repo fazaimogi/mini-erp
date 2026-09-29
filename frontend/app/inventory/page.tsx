@@ -34,7 +34,7 @@ export default function InventoryPage() {
       }
     };
     fetch();
-  }, [router]);
+  }, []);
 
   const handleStockIn = async (productId: number) => {
     const qty = prompt("Enter quantity to add:");

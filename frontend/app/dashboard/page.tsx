@@ -53,7 +53,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboard();
-  }, [router]);
+  }, []);
 
   if (!user) return null;
   if (loading) return <div className="p-8">Loading...</div>;
