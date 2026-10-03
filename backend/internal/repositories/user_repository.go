@@ -23,4 +23,5 @@ type UserRepository interface {
 	Delete(id uint) error
 	GetRoleByName(name string) (*models.Role, error)
 	GetRoleByID(id uint) (*models.Role, error)
+	ListRoles() ([]models.Role, error)
 }

@@ -20,4 +20,7 @@ func RegisterUserRoutes(api *gin.RouterGroup, handler *handlers.UserHandler, tok
 	users.DELETE("/:id", handler.Delete)
 	users.PUT("/:id/role", handler.ChangeRole)
 	users.PUT("/:id/status", handler.ChangeStatus)
+
+	// Roles feed the New User form dropdown (frontend GETs /api/roles).
+	api.GET("/roles", middleware.RequireAuth(tokenManager), middleware.RequireRole("admin"), handler.ListRoles)
 }

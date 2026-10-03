@@ -85,6 +85,16 @@ func (r *InMemoryUserRepository) GetRoleByID(id uint) (*models.Role, error) {
 	return nil, ErrUserNotFound
 }
 
+func (r *InMemoryUserRepository) ListRoles() ([]models.Role, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	roles := make([]models.Role, len(r.roles))
+	copy(roles, r.roles)
+
+	return roles, nil
+}
+
 func (r *InMemoryUserRepository) GetRoleByName(name string) (*models.Role, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

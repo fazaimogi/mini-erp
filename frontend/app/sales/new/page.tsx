@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { apiClient } from "@/lib/api";
-import { Customer, Product, ApiResponse, User } from "@/lib/types";
+import { Customer, Product, ApiResponse, User, VoucherValidation } from "@/lib/types";
 
 interface SaleItem {
   product_id: number;
@@ -23,6 +23,11 @@ export default function SalesFormPage() {
     customer_id: 0,
     items: [] as SaleItem[],
   });
+
+  const [voucherCode, setVoucherCode] = useState("");
+  const [applied, setApplied] = useState<VoucherValidation | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -69,6 +74,26 @@ export default function SalesFormPage() {
     });
   };
 
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setApplying(true);
+    setVoucherError("");
+    setApplied(null);
+    try {
+      const res = await apiClient.post<ApiResponse<VoucherValidation>>("/vouchers/validate", {
+        code: voucherCode.trim(),
+        total_amount: total,
+      });
+      if (res.data) {
+        setApplied(res.data);
+      }
+    } catch (err) {
+      setVoucherError(err instanceof Error ? err.message : "Invalid voucher");
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.items.length === 0) {
@@ -83,13 +108,14 @@ export default function SalesFormPage() {
     setSubmitting(true);
     setError("");
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         customer_id: form.customer_id,
         items: form.items.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
         })),
       };
+      if (applied) payload.voucher_code = applied.code;
       await apiClient.post("/sales", payload);
       router.push("/sales");
     } catch (err) {
@@ -181,10 +207,64 @@ export default function SalesFormPage() {
               )}
             </div>
 
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Promo Code / Voucher
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => {
+                      setVoucherCode(e.target.value.toUpperCase());
+                      setVoucherError("");
+                    }}
+                    placeholder="e.g., PROMO2026"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyVoucher}
+                    disabled={applying || !voucherCode.trim()}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition"
+                  >
+                    {applying ? "Checking..." : "Apply"}
+                  </button>
+                  {applied && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApplied(null);
+                        setVoucherCode("");
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {voucherError && (
+                  <p className="mt-2 text-sm text-red-600">{voucherError}</p>
+                )}
+                {applied && (
+                  <p className="mt-2 text-sm text-green-700">
+                    Voucher <span className="font-mono font-semibold">{applied.code}</span> applied
+                  </p>
+                )}
+              </div>
+
               <div className="text-right">
-                <p className="text-gray-600">Total:</p>
-                <p className="text-3xl font-bold text-blue-600">${total.toFixed(2)}</p>
+                <p className="text-gray-600">Subtotal: ${total.toFixed(2)}</p>
+                {applied && (
+                  <p className="text-green-600">
+                    Discount: -${Number(applied.discount_amount).toFixed(2)}
+                  </p>
+                )}
+                <p className="text-gray-600 mt-1">Total:</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  ${(applied ? Number(applied.final_amount) : total).toFixed(2)}
+                </p>
               </div>
             </div>
 

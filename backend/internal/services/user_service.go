@@ -33,6 +33,7 @@ type UserService interface {
 	Delete(id uint) error
 	ChangeRole(id uint, roleID uint) (*models.User, error)
 	ChangeStatus(id uint, status string) (*models.User, error)
+	ListRoles() ([]models.Role, error)
 }
 
 type userService struct {
@@ -179,6 +180,10 @@ func (s *userService) ChangeStatus(id uint, status string) (*models.User, error)
 	}
 
 	return user, nil
+}
+
+func (s *userService) ListRoles() ([]models.Role, error) {
+	return s.repo.ListRoles()
 }
 
 func validateUserInput(input *UserInput) error {

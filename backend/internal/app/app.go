@@ -84,8 +84,12 @@ func Router(db *gorm.DB, cfg config.Config) *gin.Engine {
 	customerService := services.NewCustomerService(customerRepo)
 	customerHandler := handlers.NewCustomerHandler(customerService)
 
+	voucherRepo := repositories.NewGormVoucherRepository(db)
+	voucherService := services.NewVoucherService(voucherRepo)
+	voucherHandler := handlers.NewVoucherHandler(voucherService)
+
 	saleRepo := repositories.NewGormSaleRepository(db)
-	saleService := services.NewSaleService(saleRepo, productRepo, inventoryRepo, db)
+	saleService := services.NewSaleService(saleRepo, productRepo, inventoryRepo, voucherRepo, db)
 	saleHandler := handlers.NewSaleHandler(saleService)
 
 	api := router.Group("/api")
@@ -97,6 +101,7 @@ func Router(db *gorm.DB, cfg config.Config) *gin.Engine {
 	routes.RegisterCategoryRoutes(api, categoryHandler, tokenManager)
 	routes.RegisterUserRoutes(api, userHandler, tokenManager)
 	routes.RegisterCustomerRoutes(api, customerHandler, tokenManager)
+	routes.RegisterVoucherRoutes(api, voucherHandler, tokenManager)
 
 	return router
 }

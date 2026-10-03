@@ -22,8 +22,9 @@ var (
 )
 
 type CreateSaleInput struct {
-	CustomerID uint                `json:"customer_id" binding:"required"`
+	CustomerID uint                 `json:"customer_id" binding:"required"`
 	Items      []CreateSaleItemInput `json:"items" binding:"required,min=1"`
+	VoucherCode string              `json:"voucher_code"`
 }
 
 type CreateSaleItemInput struct {
@@ -41,6 +42,7 @@ type saleService struct {
 	repo      repositories.SaleRepository
 	products  repositories.ProductRepository
 	inventory repositories.InventoryRepository
+	vouchers  repositories.VoucherRepository
 	db        *gorm.DB
 }
 
@@ -48,12 +50,14 @@ func NewSaleService(
 	repo repositories.SaleRepository,
 	products repositories.ProductRepository,
 	inventory repositories.InventoryRepository,
+	vouchers repositories.VoucherRepository,
 	db *gorm.DB,
 ) SaleService {
 	return &saleService{
 		repo:      repo,
 		products:  products,
 		inventory: inventory,
+		vouchers:  vouchers,
 		db:        db,
 	}
 }
@@ -95,6 +99,28 @@ func (s *saleService) Create(input *CreateSaleInput, userID uint) (*models.Sale,
 		totalAmount = totalAmount.Add(subtotal)
 	}
 
+	// Resolve voucher before opening the transaction so an invalid code fails
+	// fast without touching stock. checkVoucherUsable guards all the rules.
+	var (
+		voucher        *models.Voucher
+		discountAmount decimal.Decimal
+		finalAmount    = totalAmount
+	)
+	if input.VoucherCode != "" {
+		voucher, err := s.vouchers.GetByCode(normalizeVoucherCode(input.VoucherCode))
+		if err != nil {
+			if err == repositories.ErrVoucherNotFound {
+				return nil, ErrVoucherNotFound
+			}
+			return nil, err
+		}
+		if err := checkVoucherUsable(voucher, totalAmount); err != nil {
+			return nil, err
+		}
+		discountAmount = ComputeVoucherDiscount(voucher, totalAmount)
+		finalAmount = totalAmount.Sub(discountAmount)
+	}
+
 	// Transaction: create sale, items, deduct stock, record inventory txns.
 	tx := s.db.Begin()
 	if tx.Error != nil {
@@ -102,11 +128,15 @@ func (s *saleService) Create(input *CreateSaleInput, userID uint) (*models.Sale,
 	}
 
 	sale := &models.Sale{
-		InvoiceNumber: generateInvoiceNumber(),
-		CustomerID:    input.CustomerID,
-		UserID:        userID,
-		TotalAmount:   totalAmount,
-		Status:        "completed",
+		InvoiceNumber:  generateInvoiceNumber(),
+		CustomerID:     input.CustomerID,
+		UserID:         userID,
+		TotalAmount:    finalAmount,
+		DiscountAmount: discountAmount,
+		Status:         "completed",
+	}
+	if voucher != nil {
+		sale.VoucherID = &voucher.ID
 	}
 
 	if err := tx.Create(sale).Error; err != nil {
@@ -151,6 +181,15 @@ func (s *saleService) Create(input *CreateSaleInput, userID uint) (*models.Sale,
 		}
 
 		if err := tx.Create(invTxn).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	// Bump redemption count atomically in the same tx.
+	if voucher != nil {
+		if err := tx.Model(&models.Voucher{}).Where("id = ?", voucher.ID).
+			UpdateColumn("used_count", gorm.Expr("used_count + 1")).Error; err != nil {
 			tx.Rollback()
 			return nil, err
 		}

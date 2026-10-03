@@ -112,6 +112,19 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	Success(c, http.StatusOK, nil, "user deleted")
 }
 
+// ListRoles godoc
+// GET /api/roles
+// Admin only. Returns all roles for the New User role dropdown.
+func (h *UserHandler) ListRoles(c *gin.Context) {
+	roles, err := h.service.ListRoles()
+	if err != nil {
+		respondInternalError(c, err)
+		return
+	}
+
+	Success(c, http.StatusOK, roles, "success")
+}
+
 // ChangeRole godoc
 // PUT /api/users/:id/role
 // Admin only. Changes user role.

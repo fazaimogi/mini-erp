@@ -43,4 +43,11 @@ var (
 	ErrInvalidQuantity   = NewAppError("INVALID_QUANTITY", "quantity must be greater than zero", http.StatusUnprocessableEntity)
 	ErrInvalidPeriod     = NewAppError("INVALID_PERIOD", "invalid period parameter", http.StatusUnprocessableEntity)
 	ErrInvalidDateRange  = NewAppError("INVALID_DATE_RANGE", "custom period requires start_date and end_date", http.StatusUnprocessableEntity)
+
+	ErrVoucherNotFound       = NewAppError("VOUCHER_NOT_FOUND", "voucher not found", http.StatusNotFound)
+	ErrDuplicateVoucherCode  = NewAppError("DUPLICATE_VOUCHER_CODE", "voucher code already exists", http.StatusConflict)
+	ErrVoucherInactive       = NewAppError("VOUCHER_INACTIVE", "voucher is inactive", http.StatusUnprocessableEntity)
+	ErrVoucherExpired        = NewAppError("VOUCHER_EXPIRED", "voucher has expired", http.StatusUnprocessableEntity)
+	ErrVoucherUsageLimit     = NewAppError("VOUCHER_USAGE_LIMIT_REACHED", "voucher usage limit reached", http.StatusUnprocessableEntity)
+	ErrVoucherMinPurchase    = NewAppError("VOUCHER_MIN_PURCHASE_NOT_MET", "minimum purchase not met for this voucher", http.StatusUnprocessableEntity)
 )

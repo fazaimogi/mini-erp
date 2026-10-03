@@ -79,6 +79,18 @@ func (r *GormUserRepository) GetRoleByName(name string) (*models.Role, error) {
 	return &role, nil
 }
 
+// ListRoles returns every role, ordered by id, so the New User form can fill
+// its role dropdown from the DB instead of hardcoding choices.
+func (r *GormUserRepository) ListRoles() ([]models.Role, error) {
+	var roles []models.Role
+
+	if err := r.db.Order("id").Find(&roles).Error; err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
+
 func (r *GormUserRepository) List(limit, offset int) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64

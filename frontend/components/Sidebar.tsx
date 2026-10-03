@@ -42,6 +42,11 @@ export default function Sidebar({ user }: SidebarProps) {
           Sales
         </Link>
         {isAdmin && (
+          <Link href="/vouchers" className="block px-3 py-2 rounded hover:bg-slate-800 transition">
+            Vouchers
+          </Link>
+        )}
+        {isAdmin && (
           <Link href="/users" className="block px-3 py-2 rounded hover:bg-slate-800 transition">
             Users
           </Link>

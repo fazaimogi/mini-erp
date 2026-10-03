@@ -61,10 +61,36 @@ export interface Sale {
   customer_id: number;
   user_id: number;
   total_amount: number;
+  discount_amount: number;
+  voucher_id: number | null;
   status: string;
   customer?: { id: number; name: string };
   created_at: string;
   updated_at: string;
+}
+
+export type DiscountType = "percentage" | "fixed";
+
+export interface Voucher {
+  id: number;
+  code: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  min_purchase: number;
+  usage_limit: number;
+  used_count: number;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VoucherValidation {
+  code: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  discount_amount: number;
+  final_amount: number;
 }
 
 export interface DashboardMetrics {
