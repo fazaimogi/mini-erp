@@ -101,6 +101,17 @@ export interface DashboardMetrics {
   low_stock_count: number;
 }
 
+export interface ActivityLog {
+  id: number;
+  user_id: number | null;
+  user_name: string;
+  action: string;
+  module: string;
+  description: string;
+  ip_address: string;
+  created_at: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   message?: string;

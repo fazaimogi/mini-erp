@@ -54,6 +54,11 @@ export default function Sidebar({ user }: SidebarProps) {
         <Link href="/reports" className="block px-3 py-2 rounded hover:bg-slate-800 transition">
           Reports
         </Link>
+        {isAdmin && (
+          <Link href="/activity-logs" className="block px-3 py-2 rounded hover:bg-slate-800 transition">
+            Activity Logs
+          </Link>
+        )}
       </nav>
 
       <button

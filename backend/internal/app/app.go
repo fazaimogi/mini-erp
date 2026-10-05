@@ -16,6 +16,7 @@ import (
 	"github.com/fazasuny/erp-system/internal/repositories"
 	"github.com/fazasuny/erp-system/internal/routes"
 	"github.com/fazasuny/erp-system/internal/services"
+	"github.com/fazasuny/erp-system/internal/utils"
 )
 
 // New connects to the database, brings the schema up to date, then builds the
@@ -60,13 +61,18 @@ func Router(db *gorm.DB, cfg config.Config) *gin.Engine {
 	tokenManager := services.NewTokenManager(cfg.JWTSecret, cfg.JWTExpiryTime)
 
 	userRepo := repositories.NewGormUserRepository(db)
-	authHandler := handlers.NewAuthHandler(services.NewAuthService(userRepo, tokenManager))
+	
+	activityLogRepo := repositories.NewGormActivityLogRepository(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	activityLogHandler := handlers.NewActivityLogHandler(activityLogService)
+	auditLogger := utils.NewAuditLogger(activityLogService)
+	
+	authHandler := handlers.NewAuthHandler(services.NewAuthService(userRepo, tokenManager), auditLogger)
 	userService := services.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
 
 	productRepo := repositories.NewGormProductRepository(db)
 	productService := services.NewProductService(productRepo)
-	productHandler := handlers.NewProductHandler(productService)
 
 	inventoryRepo := repositories.NewGormInventoryRepository(db)
 	inventoryHandler := handlers.NewInventoryHandler(
@@ -94,7 +100,7 @@ func Router(db *gorm.DB, cfg config.Config) *gin.Engine {
 
 	api := router.Group("/api")
 	routes.RegisterAuthRoutes(api, authHandler, tokenManager)
-	routes.RegisterProductRoutes(api, productHandler, tokenManager)
+	routes.RegisterProductRoutes(api, handlers.NewProductHandler(productService, auditLogger), tokenManager)
 	routes.RegisterInventoryRoutes(api, inventoryHandler, tokenManager)
 	routes.RegisterSalesRoutes(api, saleHandler, tokenManager)
 	routes.RegisterReportsRoutes(api, reportsHandler, tokenManager)
@@ -102,6 +108,7 @@ func Router(db *gorm.DB, cfg config.Config) *gin.Engine {
 	routes.RegisterUserRoutes(api, userHandler, tokenManager)
 	routes.RegisterCustomerRoutes(api, customerHandler, tokenManager)
 	routes.RegisterVoucherRoutes(api, voucherHandler, tokenManager)
+	routes.RegisterActivityLogRoutes(api, activityLogHandler, tokenManager)
 
 	return router
 }

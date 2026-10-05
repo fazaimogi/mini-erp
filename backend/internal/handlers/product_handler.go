@@ -1,19 +1,25 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/fazasuny/erp-system/internal/services"
+	"github.com/fazasuny/erp-system/internal/utils"
 )
 
 type ProductHandler struct {
 	service services.ProductService
+	audit   *utils.AuditLogger
 }
 
-func NewProductHandler(service services.ProductService) *ProductHandler {
-	return &ProductHandler{service: service}
+func NewProductHandler(service services.ProductService, audit *utils.AuditLogger) *ProductHandler {
+	return &ProductHandler{
+		service: service,
+		audit:   audit,
+	}
 }
 
 // List godoc
@@ -78,6 +84,8 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		return
 	}
 
+	h.audit.LogFromContext(c, "CREATE", "Products", fmt.Sprintf("Created product: %s (SKU: %s)", input.Name, input.SKU))
+
 	Success(c, http.StatusCreated, product, "product created")
 }
 
@@ -102,6 +110,8 @@ func (h *ProductHandler) Update(c *gin.Context) {
 		return
 	}
 
+	h.audit.LogFromContext(c, "UPDATE", "Products", fmt.Sprintf("Updated product ID %d: %s", id, input.Name))
+
 	Success(c, http.StatusOK, product, "product updated")
 }
 
@@ -118,6 +128,8 @@ func (h *ProductHandler) Delete(c *gin.Context) {
 		respondServiceError(c, err)
 		return
 	}
+
+	h.audit.LogFromContext(c, "DELETE", "Products", fmt.Sprintf("Deleted product ID %d", id))
 
 	Success(c, http.StatusOK, nil, "product deleted")
 }

@@ -1,20 +1,26 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/fazasuny/erp-system/internal/middleware"
 	"github.com/fazasuny/erp-system/internal/services"
+	"github.com/fazasuny/erp-system/internal/utils"
 )
 
 type AuthHandler struct {
 	service services.AuthService
+	audit   *utils.AuditLogger
 }
 
-func NewAuthHandler(service services.AuthService) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewAuthHandler(service services.AuthService, audit *utils.AuditLogger) *AuthHandler {
+	return &AuthHandler{
+		service: service,
+		audit:   audit,
+	}
 }
 
 // Register godoc
@@ -51,6 +57,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		respondServiceError(c, err)
 		return
 	}
+
+	userID := user.ID
+	h.audit.Log(&userID, user.Name, "LOGIN", "Auth", fmt.Sprintf("User %s logged in", user.Email), c.ClientIP())
 
 	Success(c, http.StatusOK, gin.H{
 		"user":  user,
