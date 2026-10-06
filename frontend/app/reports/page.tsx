@@ -47,10 +47,10 @@ export default function ReportsPage() {
         <Header title="Reports" user={user} />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <MetricCard label="Total Products" value={metrics?.total_products || 0} />
-          <MetricCard label="Total Customers" value={metrics?.total_customers || 0} />
-          <MetricCard label="Total Sales" value={metrics?.total_sales || 0} variant="success" />
-          <MetricCard label="Total Revenue" value={`$${metrics?.total_revenue || 0}`} />
-          <MetricCard label="Low Stock" value={metrics?.low_stock_count || 0} variant="danger" />
+          <MetricCard label="Total Customers" value={metrics?.total_customers || 0} variant="teal" />
+          <MetricCard label="Total Sales" value={metrics?.total_sales || 0} variant="emerald" />
+          <MetricCard label="Total Revenue" value={`$${metrics?.total_revenue || 0}`} variant="violet" />
+          <MetricCard label="Low Stock" value={metrics?.low_stock_count || 0} variant="rose" />
         </div>
       </main>
     </div>

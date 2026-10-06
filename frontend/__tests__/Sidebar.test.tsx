@@ -8,6 +8,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: jest.fn(),
   }),
+  usePathname: () => '/dashboard',
 }));
 
 describe('Sidebar', () => {

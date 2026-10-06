@@ -1,5 +1,54 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --color-ink-900: oklch(0.21 0.03 265);
+  --color-ink-700: oklch(0.36 0.03 265);
+  --color-ink-500: oklch(0.55 0.02 265);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-color: oklch(0.985 0.004 265);
+    color: var(--color-ink-900);
+  }
+
+  /* Browser surfaces themed from the palette (craft floor) */
+  ::selection {
+    background: oklch(0.62 0.17 265 / 0.25);
+  }
+
+  :focus-visible {
+    outline: 2px solid oklch(0.62 0.17 265);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.75 0.02 265) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: oklch(0.78 0.02 265);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.66 0.03 265);
+    background-clip: content-box;
+  }
+}
 
 @keyframes slideIn {
   from {
@@ -12,6 +61,28 @@
   }
 }
 
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-slide-in {
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in,
+  .animate-fade-up {
+    animation: none;
+  }
 }
