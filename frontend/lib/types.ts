@@ -101,6 +101,27 @@ export interface DashboardMetrics {
   low_stock_count: number;
 }
 
+export interface ProductSaleInfo {
+  id: number;
+  name: string;
+  sku: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface ProductLowStockInfo {
+  id: number;
+  name: string;
+  sku: string;
+  stock: number;
+  minimum_stock: number;
+}
+
+export interface ProductsReport {
+  top_selling: ProductSaleInfo[] | null;
+  low_stock: ProductLowStockInfo[] | null;
+}
+
 export interface ActivityLog {
   id: number;
   user_id: number | null;

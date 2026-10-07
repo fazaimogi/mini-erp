@@ -5,13 +5,20 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import MetricCard from "@/components/MetricCard";
+import TopSellingChart from "@/components/TopSellingChart";
 import { apiClient } from "@/lib/api";
-import { DashboardMetrics, ApiResponse, User } from "@/lib/types";
+import {
+  DashboardMetrics,
+  ProductsReport,
+  ApiResponse,
+  User,
+} from "@/lib/types";
 
 export default function ReportsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [products, setProducts] = useState<ProductsReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,10 +31,12 @@ export default function ReportsPage() {
 
     const fetch = async () => {
       try {
-        const res = await apiClient.get<ApiResponse<DashboardMetrics>>(
-          "/reports/dashboard"
-        );
-        if (res.data) setMetrics(res.data);
+        const [metricsRes, productsRes] = await Promise.all([
+          apiClient.get<ApiResponse<DashboardMetrics>>("/reports/dashboard"),
+          apiClient.get<ApiResponse<ProductsReport>>("/reports/products"),
+        ]);
+        if (metricsRes.data) setMetrics(metricsRes.data);
+        if (productsRes.data) setProducts(productsRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -51,6 +60,10 @@ export default function ReportsPage() {
           <MetricCard label="Total Sales" value={metrics?.total_sales || 0} variant="emerald" />
           <MetricCard label="Total Revenue" value={`$${metrics?.total_revenue || 0}`} variant="violet" />
           <MetricCard label="Low Stock" value={metrics?.low_stock_count || 0} variant="rose" />
+        </div>
+
+        <div className="mt-6">
+          <TopSellingChart items={products?.top_selling ?? []} />
         </div>
       </main>
     </div>
