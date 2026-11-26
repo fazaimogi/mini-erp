@@ -10,4 +10,20 @@ bin/
 tmp/
 
 *.exe
-*.log
+*.log# Secrets & credentials
+.env
+.env.*
+*.pem
+*.key
+*kubeconfig*
+admin.conf
+credentials.json
+
+# Infrastructure & Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# OS & Editor
+.DS_Store
+.vscode/
