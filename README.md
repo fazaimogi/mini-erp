@@ -359,3 +359,5 @@ app/             Next.js pages (dashboard, products, categories, etc.)
 ## License
 
 ISC
+- `master`: branch utama yang stabil, tidak menerima commit/push langsung.
+- `<type>/<short-desc>` (misalnya `feat/...`, `chore/...`, `docs/...`): branch fitur untuk setiap perubahan dan digabungkan ke `main` lewat Pull Request.
